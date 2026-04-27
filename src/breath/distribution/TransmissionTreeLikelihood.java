@@ -140,8 +140,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 		btr = transmissionHazard.getRate();
 
 		double f = getRetainedFrac(50000);
-		lambda = (Cs*f*Ctr + (1-Cs)*Ctr) ;
-		
+		//	lambda = (Cs*f*Ctr + (1-Cs)*Ctr) ;
+		lambda = Ctr; 
 		Log.info("inferred lambda = " + lambda + " = Ctr * " + (lambda/Ctr));
 		if (lambdaTrInput.get() != null) {
 			lambda = lambdaTrInput.get();
@@ -151,7 +151,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 		p0 = getp0(Cs, Ctr, 0.1);
 		phi = getPhi(Cs, lambda, p0);
 		rho = getRho(phi);
-
+		Log.info("p0=" + p0 + " phi=" + phi + " rho=" + rho);
+		
 		allowTransmissionsAfterSampling = allowTransmissionsAfterSamplingInput.get();
 		conditionOnInfectionTime = conditionOnInfectionTimeInput.get();
 		branchLengthThreshold = branchLengthThresholdInput.get();
@@ -1079,17 +1080,25 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 //	        } 
 		return Z;
 	}
-
-	private double getLogBlockLike(double tblock, int n, double Yr) {
-		double blockLike = FastMath.pow(1-rho,n) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr);
+   
+    	private double getLogBlockLike(double tblock, int n, double Yr) {
+    	    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr); 
 		
 		// double blockLike = (FastMath.pow(1-rho, n)) * dgamma(tblock, n*atr, btr) / getBlockCondition(p0,rho, atr, btr, Yr);
-//	    double blockLike = (1-FastMath.pow(rho,n)) * dgamma(tblock, n*a, b) / getBlockCondition(p0,rho, a, b, Yr);
-		double logBlockLike = FastMath.log(blockLike);
-//	    System.err.println("blockLike(" +tblock+"," + n +"," + Yr+") = " + blockLike);
+	    //	    double blockLike = (1-FastMath.pow(rho,n)) * dgamma(tblock, n*a, b) / getBlockCondition(p0,rho, a, b, Yr);
+    	double logBlockLike = FastMath.log(blockLike);
+    //	    System.err.println("blockLike(" +tblock+"," + n +"," + Yr+") = " + blockLike);
 		return logBlockLike;
 	}
-
+    // tested : a better "hack" on rho to account for success prob not being the "ever" prob (i am doubtful).
+    // also condition on at least 1 case in the block (div by 1-rho) 
+    //   private double getLogBlockLike(double tblock, int n, double Yr) {
+    //	double rhoYr = 1 - FastMath.exp(logS_tr(Yr, 0)*phi + logS_s(Yr, 0));
+    //	double blockLike = FastMath.pow(1-rhoYr, n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr);
+    //	double logBlockLike = FastMath.log(blockLike);
+    //	return logBlockLike;
+    // }
+    
 	// gives the density
 	double dgamma(double x, double alpha, double rate) {
 		if (x < 0) {
