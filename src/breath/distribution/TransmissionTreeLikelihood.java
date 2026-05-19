@@ -86,6 +86,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 	private double rho;
 	private double atr;
 	private double btr;
+        private double as;
+        private double bs;
 
 	//private double a, b;
 
@@ -138,6 +140,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 		Ctr = transmissionHazard.constantInput.get().getArrayValue();
 		atr = transmissionHazard.shapeInput.get().getArrayValue();
 		btr = transmissionHazard.getRate();
+		as = samplingHazard.shapeInput.get().getArrayValue();   //CC: added this 
+		bs = samplingHazard.getRate();                          //CC: added this
 
 		double f = getRetainedFrac(50000);
 		//	lambda = (Cs*f*Ctr + (1-Cs)*Ctr) ;
@@ -152,7 +156,7 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 		phi = getPhi(Cs, lambda, p0);
 		rho = getRho(phi);
 		Log.info("p0=" + p0 + " phi=" + phi + " rho=" + rho);
-		
+		System.out.println("CAROLINE_TEST: rho=" + rho + " Cs=" + Cs + " p0=" + p0);
 		allowTransmissionsAfterSampling = allowTransmissionsAfterSamplingInput.get();
 		conditionOnInfectionTime = conditionOnInfectionTimeInput.get();
 		branchLengthThreshold = branchLengthThresholdInput.get();
@@ -306,6 +310,7 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 				logP1 +=  logS_tr(start, end); // further contribution below
 			}
 			logP1 -= logGetIndivCondition(p0, start, d);
+			// logP1 -= Math.log(pgamma(start - d, as, bs)); // CC: this is a new conditioning form i'm trying
 			if (Double.isInfinite(logP1) && logP1 > 0) {
 				System.err.println("Numerical instability encountered: ");
 				System.err.println(start + " " + d + " " + end + " " + p0);
@@ -346,8 +351,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 					Double logP1 = logS_s(start, d);
 					// contribution of causing infections
 					logP += logS_tr(start, d); // further contribution below
-					logP -= logGetIndivCondition(p0, start, d);
-
+					logP -= logGetIndivCondition(p0, start, d); // cc: changed this to try new conditioning approach
+					// logP -= Math.log(1 - FastMath.exp(logS_tr(start, d) * (1 - p0)));
 					logP += logP1;
 				}
 			}
@@ -1080,13 +1085,17 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 //	        } 
 		return Z;
 	}
-   
+
     	private double getLogBlockLike(double tblock, int n, double Yr) {
-    	    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr); 
-		
-		// double blockLike = (FastMath.pow(1-rho, n)) * dgamma(tblock, n*atr, btr) / getBlockCondition(p0,rho, atr, btr, Yr);
+	    //    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr*FastMath.sqrt(n)) / pgamma(Yr, n*atr, btr*FastMath.sqrt(n)); // CC: attempt to enable reconstruction of short-duration blocks with sqrt(n) but this was a hack.
+	    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr); // CC: current best guess for what this should be 
+	    //	 double blockLike = (FastMath.pow(1-rho, n)) * dgamma(tblock, n*atr, btr) / getBlockCondition(p0,rho, atr, btr, Yr);
 	    //	    double blockLike = (1-FastMath.pow(rho,n)) * dgamma(tblock, n*a, b) / getBlockCondition(p0,rho, a, b, Yr);
     	double logBlockLike = FastMath.log(blockLike);
+	//	System.err.println("Yr=" + Yr + " logStr=" + logS_tr(Yr, 0) + " logSs=" + logS_s(Yr, 0));
+	//	double logTT = FastMath.log(1 - FastMath.exp(logS_tr(Yr, 0)*(1-p0) + logS_s(Yr, 0))); // CC: tried adjusting for cases in blocks being ATTS
+	// logBlockLike -= n * logTT;
+	//	System.err.println("n=" + n + " Yr=" + Yr + " logTT=" + logTT + " correction=" + (-n * logTT));
     //	    System.err.println("blockLike(" +tblock+"," + n +"," + Yr+") = " + blockLike);
 		return logBlockLike;
 	}
@@ -1142,6 +1151,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 			double start = intervals.birthTime;
 			double end = intervals.times.get(0);
 			logP1 += logh_s(start, end) + logS_s(start, end);
+			//	logP1 += logh_s(start, end) + logS_s(start, end) - Math.log(pgamma(start - d, as, bs));;
+			// trying conditioning on sampling by time d specifically (in addition to the indiv conditioning) - last term above : suggest removing this! (removing now.) 
 			// contribution of causing infections
 			if (allowTransmissionsAfterSampling) {
 				logP1 +=  logS_tr(start, d); // further contribution below

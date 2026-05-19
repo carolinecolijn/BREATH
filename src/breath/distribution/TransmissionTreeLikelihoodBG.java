@@ -1112,7 +1112,7 @@ public class TransmissionTreeLikelihoodBG extends TransmissionTreeLikelihood {
 	            phi * transmissionHazard.logS(Yr -tblock, 0.0);
 	
 	    double logBlockLike =
-	            (n) * logOneMinusRhoT
+	            (n-1) * logOneMinusRhoT
 	            + FastMath.log(dgamma(tblock, n * atr, btr))
 	            - FastMath.log(pgamma(Yr, n * atr, btr));
 	
