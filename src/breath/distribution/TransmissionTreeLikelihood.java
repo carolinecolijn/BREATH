@@ -88,6 +88,7 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 	private double btr;
         private double as;
         private double bs;
+    private double Pone; 
 
 	//private double a, b;
 
@@ -155,6 +156,7 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 		p0 = getp0(Cs, Ctr, 0.1);
 		phi = getPhi(Cs, lambda, p0);
 		rho = getRho(phi);
+		Pone = lambda * (1 - p0) * p0 / (1 - Math.exp(-Cs));
 		Log.info("p0=" + p0 + " phi=" + phi + " rho=" + rho);
 		System.out.println("CAROLINE_TEST: rho=" + rho + " Cs=" + Cs + " p0=" + p0);
 		allowTransmissionsAfterSampling = allowTransmissionsAfterSamplingInput.get();
@@ -1088,7 +1090,8 @@ public class TransmissionTreeLikelihood extends TreeDistribution {
 
     	private double getLogBlockLike(double tblock, int n, double Yr) {
 	    //    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr*FastMath.sqrt(n)) / pgamma(Yr, n*atr, btr*FastMath.sqrt(n)); // CC: attempt to enable reconstruction of short-duration blocks with sqrt(n) but this was a hack.
-	    double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr); // CC: current best guess for what this should be 
+	    //  double blockLike = FastMath.pow(1-rho,n-1) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr); // CC: current best guess for what this should be
+	    double blockLike = (FastMath.pow(1-rho, n) / Pone) * dgamma(tblock, n*atr, btr) / pgamma(Yr, n*atr, btr);
 	    //	 double blockLike = (FastMath.pow(1-rho, n)) * dgamma(tblock, n*atr, btr) / getBlockCondition(p0,rho, atr, btr, Yr);
 	    //	    double blockLike = (1-FastMath.pow(rho,n)) * dgamma(tblock, n*a, b) / getBlockCondition(p0,rho, a, b, Yr);
     	double logBlockLike = FastMath.log(blockLike);
